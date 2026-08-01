@@ -1,4 +1,4 @@
-// Robus Ops — internal delivery tooling for Zach's actual consulting business.
+// AAC Ops — internal delivery tooling for the client's consulting business.
 // Not client-facing. This runs Robus, not a Robus client.
 
 generator client {

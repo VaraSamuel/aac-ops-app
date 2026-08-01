@@ -9,7 +9,7 @@ export default async function PlaybooksPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-neutral-900">Delivery Playbooks</h1>
         <p className="text-sm text-neutral-500 mt-1">
-          Standard implementation guides per capability — Zach doesn&apos;t rebuild a Sprint from scratch each time.
+          Standard implementation guides per capability — no one rebuilds a Sprint from scratch each time.
         </p>
       </div>
 
