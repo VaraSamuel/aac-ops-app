@@ -1,5 +1,5 @@
 // AAC Ops — internal delivery tooling for the client's consulting business.
-// Not client-facing. This runs Robus, not a Robus client.
+// Not client-facing. This runs the business, not a client of it.
 
 generator client {
   provider = "prisma-client"
@@ -71,6 +71,71 @@ enum RevenueBasis {
   UNMEASURED
 }
 
+// ── Pre-sales pipeline (Notion CRM Cluster C1 equivalent — Databases 0/0b/1/2/3) ──
+// Never built in Notion; ported here as real schema instead. Composite scores,
+// the qualification decision (Qualified/Nurture/Not qualified), and the
+// discovery-call outcome are always computed from raw inputs — see
+// src/lib/pipeline.ts — never stored, same philosophy as the scoring matrix.
+
+enum RecordType {
+  CLIENT
+  OPPORTUNITY
+}
+
+enum LeadSource {
+  REFERRAL
+  CHAMBER_OR_ASSOCIATION
+  LINKEDIN
+  EMAIL_INBOUND
+  PRIOR_CLIENT
+  WEBSITE
+  OTHER
+}
+
+enum PipelineStatus {
+  INBOUND
+  QUALIFIED
+  NURTURE
+  NOT_QUALIFIED
+  DISCOVERY_HELD
+  PROPOSAL_SENT
+  CONVERTED
+  DEFERRED
+  DECLINED
+}
+
+enum OverlayStatus {
+  FULL_PACK
+  LIGHTWEIGHT
+  DRAFT
+}
+
+enum CheckInType {
+  POST_ASSESSMENT_30_DAY
+  POST_SPRINT_30_DAY
+  TOOL_ADVISORY_60_DAY
+  ANNUAL_POLICY_REVIEW
+  QUARTERLY_REVIEW
+}
+
+enum ScriptVariant {
+  ASSESSMENT
+  TOOL_ADVISORY
+  POLICY
+}
+
+enum RecordedStatus {
+  YES_CONSENT_LOGGED
+  NO_DECLINED
+  NO_REGIME_FLAG
+}
+
+enum BudgetSignal {
+  BUYS_OUTSIDE_SERVICES
+  SOFTWARE_SPEND_ONLY
+  NOT_OBTAINED
+}
+
 model User {
   id           String @id @default(cuid())
   email        String @unique
@@ -86,8 +151,139 @@ model RobusClient {
   stage     EngagementStage @default(ASSESSMENT)
   createdAt DateTime        @default(now())
 
-  workflows       Workflow[]
-  assessmentNotes AssessmentNote[]
+  // Pipeline / CRM fields — pre-conversion sales funnel tracking. Additive to
+  // the existing delivery-stage model above; `stage` still governs delivery,
+  // `pipelineStatus` governs where a lead sits before and around conversion.
+  recordType          RecordType     @default(CLIENT)
+  parentClientId      String?
+  parentClient        RobusClient?   @relation("ClientOpportunities", fields: [parentClientId], references: [id])
+  opportunities       RobusClient[]  @relation("ClientOpportunities")
+  pipelineStatus      PipelineStatus @default(INBOUND)
+  source              LeadSource?
+  referredBy          String?
+  contactName         String?
+  contactEmail        String?
+  contactPhone        String?
+  statusChangedAt     DateTime?
+  followUpDate        DateTime?
+  closeReason         String?
+  engagementValue     Float? // one-time fixed fee — never summed with retainerValue
+  retainerValue       Float? // monthly — never summed with engagementValue
+  sowSignedDate       DateTime?
+  engagementStartDate DateTime?
+  sowLink             String?
+  clientWorkspaceUrl  String?
+
+  workflows               Workflow[]
+  assessmentNotes         AssessmentNote[]
+  qualifications          LeadQualification[]
+  discoveryCalls          DiscoveryCall[]
+  checkIns                CheckIn[]           @relation("CheckInClient")
+  opportunitiesRaisedFrom CheckIn[]           @relation("CheckInOpportunityRaised")
+
+  @@index([pipelineStatus])
+}
+
+model CheckIn {
+  id                  String       @id @default(cuid())
+  clientId            String
+  client              RobusClient  @relation("CheckInClient", fields: [clientId], references: [id])
+  checkInType         CheckInType
+  date                DateTime     @default(now())
+  outcomeNote         String
+  sentimentScore      Int?
+  opportunityRaisedId String?      @unique
+  opportunityRaised   RobusClient? @relation("CheckInOpportunityRaised", fields: [opportunityRaisedId], references: [id])
+
+  @@index([clientId])
+}
+
+model VerticalOverlay {
+  id                     String        @id @default(cuid())
+  vertical               String
+  status                 OverlayStatus @default(DRAFT)
+  slotASizeBand          String? // size band + geography nuance, replaces the 5–100 universal default
+  slotBTypicalWorkflows  String? // processes commonly run by hand, in owner's words
+  slotCToolLandscape     String? // load-bearing — what they run, unused automation, addressable tools
+  slotDBuyingStructure   String? // who decides, how they buy, rough deal-size expectation — never a fee
+  slotERegulatoryContext String? // applicable regime and any established tool exclusions
+  extraDisqualifiers     String?
+  sourcePack             String? // filename of the source document this overlay was drawn from
+  lastReviewed           DateTime?
+
+  qualifications LeadQualification[]
+}
+
+model LeadQualification {
+  id           String      @id @default(cuid())
+  clientId     String
+  client       RobusClient @relation(fields: [clientId], references: [id])
+  prospectName String
+  source       LeadSource
+  dateRun      DateTime    @default(now())
+  runBy        String // role name — "Relationship Lead", never a Build Lead
+
+  gateB1 Boolean @default(false) // can you name at least one specific repeated process?
+  gateC1 Boolean @default(false) // is at least one workflow plausibly AI-addressable today?
+  gateD1 Boolean @default(false) // is the approving decision-maker identifiable and reachable?
+  gateE1 Boolean @default(false) // no regulatory context that rules out every compliant tool?
+  gateF4 Boolean @default(false) // is the request on the service ladder (not custom build, not IT support)?
+
+  scoreA Int @default(0) // firm fit, 0–8
+  scoreB Int @default(0) // workflow fit, 0–8
+  scoreC Int @default(0) // AI-addressability, 0–6
+  scoreD Int @default(0) // buying readiness, 0–6
+  scoreE Int @default(0) // data & compliance context, 0–2
+
+  complianceFlags String? // E2 regime answer + E3 vendor requirement, free text
+
+  verticalOverlayId String?
+  verticalOverlay   VerticalOverlay? @relation(fields: [verticalOverlayId], references: [id])
+
+  overrideApplied   Boolean   @default(false) // buying-readiness override forcing Nurture despite a qualifying total
+  followUpDate      DateTime?
+  declineReason     String?
+  referredTo        String?
+  discoveryBooked   DateTime?
+  checklistComplete Boolean   @default(false)
+
+  discoveryCalls DiscoveryCall[]
+
+  @@index([clientId])
+}
+
+model DiscoveryCall {
+  id                         String            @id @default(cuid())
+  clientId                   String
+  client                     RobusClient       @relation(fields: [clientId], references: [id])
+  leadQualificationId        String
+  leadQualification          LeadQualification @relation(fields: [leadQualificationId], references: [id])
+  prospectName               String
+  scriptVariant              ScriptVariant     @default(ASSESSMENT)
+  callDate                   DateTime          @default(now())
+  runBy                      String
+  recorded                   RecordedStatus    @default(NO_DECLINED)
+  consentCapturedOnRecording Boolean           @default(false)
+
+  namedWorkflows     Int           @default(0) // count of AI-addressable workflows named on the call
+  workflowDetail     String?
+  toolInventory      String?
+  utilisationFinding String?
+  decisionPath       String?
+  trigger            String?
+  budgetSignal       BudgetSignal?
+  budgetSignalDetail String?
+  regimeFlagNew      String? // anything new heard this call; if it contradicts the qualification flag, record both — never overwrite
+  clientLanguage     String? // 3–5 verbatim quoted phrases
+
+  declineReason String?
+  referredTo    String?
+  followUpDate  DateTime?
+  proposalSent  DateTime?
+  openQuestions String?
+
+  @@index([clientId])
+  @@index([leadQualificationId])
 }
 
 model AssessmentNote {

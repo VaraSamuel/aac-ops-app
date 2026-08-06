@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { logOut } from "@/lib/actions";
 
 const NAV = [
+  { href: "/pipeline", label: "Pipeline" },
   { href: "/clients", label: "Clients" },
   { href: "/signal", label: "Signal Engine" },
   { href: "/playbooks", label: "Playbooks" },
