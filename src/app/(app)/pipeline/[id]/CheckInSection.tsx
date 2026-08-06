@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { addCheckIn, deleteCheckIn } from "@/lib/pipelineActions";
 import { DeleteButton } from "@/components/DeleteButton";
+import { formatDate } from "@/lib/formatDate";
 
 type CheckIn = {
   id: string;
@@ -34,7 +35,7 @@ export function CheckInSection({ clientId, checkIns }: { clientId: string; check
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600">
                 {TYPE_LABELS[c.checkInType]}
               </span>
-              <span className="text-xs text-neutral-400">{new Date(c.date).toLocaleDateString()}</span>
+              <span className="text-xs text-neutral-400">{formatDate(c.date)}</span>
               {c.sentimentScore !== null && <span className="text-xs text-neutral-400">Sentiment {c.sentimentScore}/10</span>}
             </div>
             <p className="text-sm text-neutral-700 mt-1">{c.outcomeNote}</p>

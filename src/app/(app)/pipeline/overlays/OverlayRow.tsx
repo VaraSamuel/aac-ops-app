@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { updateVerticalOverlay, deleteVerticalOverlay } from "@/lib/pipelineActions";
 import { DeleteButton } from "@/components/DeleteButton";
 import { OverlayFields } from "./OverlayFields";
+import { formatDate } from "@/lib/formatDate";
 
 type Overlay = {
   id: string;
@@ -95,7 +96,7 @@ export function OverlayRow({ overlay, reviewStale }: { overlay: Overlay; reviewS
         {overlay.extraDisqualifiers && <p><span className="font-medium">Extra disqualifiers:</span> {overlay.extraDisqualifiers}</p>}
         {overlay.sourcePack && <p className="text-xs text-neutral-400">Source: {overlay.sourcePack}</p>}
         {overlay.lastReviewed && (
-          <p className="text-xs text-neutral-400">Last reviewed: {new Date(overlay.lastReviewed).toLocaleDateString()}</p>
+          <p className="text-xs text-neutral-400">Last reviewed: {formatDate(overlay.lastReviewed)}</p>
         )}
       </div>
     </details>

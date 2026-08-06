@@ -10,6 +10,7 @@ import { CheckInSection } from "./CheckInSection";
 import { ConvertForm } from "./ConvertForm";
 import { DeleteButton } from "@/components/DeleteButton";
 import { deleteLead } from "@/lib/pipelineActions";
+import { formatDate } from "@/lib/formatDate";
 
 export default async function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -87,7 +88,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
           <div className="mt-3 text-sm text-neutral-600 space-y-1">
             {client.engagementValue != null && <p>Engagement value: ${client.engagementValue.toLocaleString()}</p>}
             {client.retainerValue != null && <p>Retainer value: ${client.retainerValue.toLocaleString()}/mo</p>}
-            {client.engagementStartDate && <p>Start date: {new Date(client.engagementStartDate).toLocaleDateString()}</p>}
+            {client.engagementStartDate && <p>Start date: {formatDate(client.engagementStartDate)}</p>}
             {client.clientWorkspaceUrl && (
               <p>
                 Workspace:{" "}

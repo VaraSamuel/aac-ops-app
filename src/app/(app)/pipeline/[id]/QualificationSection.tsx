@@ -15,6 +15,7 @@ import {
   QUALIFICATION_OUTCOME_LABELS,
 } from "@/lib/pipeline";
 import { DeleteButton } from "@/components/DeleteButton";
+import { formatDate } from "@/lib/formatDate";
 
 type Overlay = { id: string; vertical: string; status: string };
 
@@ -128,7 +129,7 @@ function QualificationRow({ clientId, q, overlays }: { clientId: string; q: Qual
             )}
           </div>
           <p className="text-xs text-neutral-500 mt-1">
-            Total {total}/30 · Workflow floor {floor}/14 · Run by {q.runBy} · {new Date(q.dateRun).toLocaleDateString()}
+            Total {total}/30 · Workflow floor {floor}/14 · Run by {q.runBy} · {formatDate(q.dateRun)}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -155,7 +156,7 @@ function QualificationRow({ clientId, q, overlays }: { clientId: string; q: Qual
       </div>
       {q.complianceFlags && <p className="text-xs text-neutral-600 mt-2">Compliance: {q.complianceFlags}</p>}
       {outcome === "NURTURE" && q.followUpDate && (
-        <p className="text-xs text-neutral-500 mt-1">Follow up: {new Date(q.followUpDate).toLocaleDateString()}</p>
+        <p className="text-xs text-neutral-500 mt-1">Follow up: {formatDate(q.followUpDate)}</p>
       )}
       {outcome === "NOT_QUALIFIED" && q.declineReason && (
         <p className="text-xs text-neutral-500 mt-1">

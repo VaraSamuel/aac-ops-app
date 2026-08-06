@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { addDiscoveryCall, updateDiscoveryCall, deleteDiscoveryCall } from "@/lib/pipelineActions";
 import { discoveryCallOutcome, floorMet, DISCOVERY_OUTCOME_LABELS, proposalDue } from "@/lib/pipeline";
 import { DeleteButton } from "@/components/DeleteButton";
+import { formatDate } from "@/lib/formatDate";
 
 type Qualification = { id: string; prospectName: string; dateRun: Date };
 
@@ -117,12 +118,12 @@ function DiscoveryCallRow({
           </div>
           <p className="text-xs text-neutral-500 mt-1">
             {c.scriptVariant} · {c.namedWorkflows} workflow{c.namedWorkflows !== 1 ? "s" : ""} named · Run by {c.runBy} ·{" "}
-            {new Date(c.callDate).toLocaleDateString()}
+            {formatDate(c.callDate)}
           </p>
           {outcome === "PROCEED" && (
             <p className="text-xs text-neutral-500 mt-1">
-              Proposal due {proposalDue(c.callDate).toLocaleDateString()}
-              {c.proposalSent && ` · sent ${new Date(c.proposalSent).toLocaleDateString()}`}
+              Proposal due {formatDate(proposalDue(c.callDate))}
+              {c.proposalSent && ` · sent ${formatDate(c.proposalSent)}`}
             </p>
           )}
         </div>
@@ -177,7 +178,7 @@ function DiscoveryCallForm({
           <select name="leadQualificationId" defaultValue={existing?.leadQualificationId ?? qualifications[0]?.id} required className={inputClass}>
             {qualifications.map((q) => (
               <option key={q.id} value={q.id}>
-                {q.prospectName} — {new Date(q.dateRun).toLocaleDateString()}
+                {q.prospectName} — {formatDate(q.dateRun)}
               </option>
             ))}
           </select>
