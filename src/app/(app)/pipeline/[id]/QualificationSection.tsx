@@ -12,6 +12,7 @@ import {
   workflowFloor,
   verticalDepth,
   qualificationOutcome,
+  qualificationNextStep,
   QUALIFICATION_OUTCOME_LABELS,
 } from "@/lib/pipeline";
 import { DeleteButton } from "@/components/DeleteButton";
@@ -100,6 +101,7 @@ function QualificationRow({ clientId, q, overlays }: { clientId: string; q: Qual
   const floor = workflowFloor(scores);
   const outcome = qualificationOutcome(gates, scores, q.overrideApplied);
   const depth = verticalDepth(!!q.verticalOverlayId);
+  const nextStep = qualificationNextStep(outcome);
 
   if (editing) {
     return (
@@ -125,6 +127,11 @@ function QualificationRow({ clientId, q, overlays }: { clientId: string; q: Qual
             {q.overrideApplied && (
               <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
                 Buying-readiness override
+              </span>
+            )}
+            {nextStep && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+                Next: {nextStep}
               </span>
             )}
           </div>

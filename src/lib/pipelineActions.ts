@@ -69,12 +69,23 @@ export async function createLead(formData: FormData) {
   redirect(`/pipeline/${client.id}`);
 }
 
+const SERVICE_LINES = [
+  "AI_READINESS_ASSESSMENT",
+  "AUTOMATION_SPRINT",
+  "TOOL_SELECTION_ADVISORY",
+  "AI_POLICY_GOVERNANCE_KIT",
+  "QUARTERLY_REVIEW",
+] as const;
+
 const updateLeadIdentitySchema = z.object({
   contactName: z.string().optional(),
   contactEmail: z.string().optional(),
   contactPhone: z.string().optional(),
   source: z.enum(LEAD_SOURCES).optional(),
   referredBy: z.string().optional(),
+  serviceLine: z.enum(SERVICE_LINES).optional(),
+  relationshipLead: z.string().optional(),
+  buildLead: z.string().optional(),
 });
 
 export async function updateLeadIdentity(clientId: string, formData: FormData) {
@@ -85,6 +96,9 @@ export async function updateLeadIdentity(clientId: string, formData: FormData) {
     contactPhone: formData.get("contactPhone") || undefined,
     source: formData.get("source") || undefined,
     referredBy: formData.get("referredBy") || undefined,
+    serviceLine: formData.get("serviceLine") || undefined,
+    relationshipLead: formData.get("relationshipLead") || undefined,
+    buildLead: formData.get("buildLead") || undefined,
   });
   await prisma.robusClient.update({
     where: { id: clientId },
@@ -94,6 +108,9 @@ export async function updateLeadIdentity(clientId: string, formData: FormData) {
       contactPhone: parsed.contactPhone || null,
       source: parsed.source,
       referredBy: parsed.referredBy || null,
+      serviceLine: parsed.serviceLine ?? null,
+      relationshipLead: parsed.relationshipLead || null,
+      buildLead: parsed.buildLead || null,
     },
   });
   revalidatePath(`/pipeline/${clientId}`);
@@ -127,6 +144,7 @@ export async function convertLead(clientId: string, formData: FormData) {
     where: { id: clientId },
     data: {
       pipelineStatus: "CONVERTED",
+      deliveryStage: "KICKOFF",
       statusChangedAt: new Date(),
       engagementValue: parsed.engagementValue ? Number(parsed.engagementValue) : null,
       retainerValue: parsed.retainerValue ? Number(parsed.retainerValue) : null,

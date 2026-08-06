@@ -26,7 +26,7 @@ const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-neutral-100 text-neutral-500",
 };
 
-export function OverlayRow({ overlay, reviewStale }: { overlay: Overlay; reviewStale: boolean }) {
+export function OverlayRow({ overlay, reviewStale, qualificationsCount }: { overlay: Overlay; reviewStale: boolean; qualificationsCount: number }) {
   const [editing, setEditing] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -69,6 +69,9 @@ export function OverlayRow({ overlay, reviewStale }: { overlay: Overlay; reviewS
           {reviewStale && (
             <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">Review due</span>
           )}
+          <span className="text-xs text-neutral-400">
+            {qualificationsCount} qualification{qualificationsCount !== 1 ? "s" : ""} run against this
+          </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button

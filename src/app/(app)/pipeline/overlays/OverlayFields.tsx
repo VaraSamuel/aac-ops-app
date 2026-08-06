@@ -22,8 +22,11 @@ export function OverlayFields({
         <input name="vertical" required defaultValue={defaults?.vertical ?? ""} placeholder="Hotel" className={inputClass} />
       </label>
       <label>
-        <span className="block text-xs font-medium text-neutral-600 mb-1">Status</span>
-        <select name="status" defaultValue={defaults?.status ?? "DRAFT"} className={inputClass}>
+        <span className="block text-xs font-medium text-neutral-600 mb-1">Status (must be chosen explicitly)</span>
+        <select name="status" required defaultValue={defaults?.status ?? ""} className={inputClass}>
+          <option value="" disabled>
+            — choose one —
+          </option>
           <option value="FULL_PACK">Full pack</option>
           <option value="LIGHTWEIGHT">Lightweight</option>
           <option value="DRAFT">Draft</option>

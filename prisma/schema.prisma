@@ -136,6 +136,25 @@ enum BudgetSignal {
   NOT_OBTAINED
 }
 
+enum ServiceLine {
+  AI_READINESS_ASSESSMENT
+  AUTOMATION_SPRINT
+  TOOL_SELECTION_ADVISORY
+  AI_POLICY_GOVERNANCE_KIT
+  QUARTERLY_REVIEW
+}
+
+// Post-conversion delivery phase — distinct from `stage` (which drives the
+// existing Workflow/scoring delivery model). Populated only once a lead is
+// Converted.
+enum DeliveryStage {
+  KICKOFF
+  DELIVERY
+  HANDOFF
+  FOLLOW_ON
+  CLOSED
+}
+
 model User {
   id           String @id @default(cuid())
   email        String @unique
@@ -159,7 +178,11 @@ model RobusClient {
   parentClient        RobusClient?   @relation("ClientOpportunities", fields: [parentClientId], references: [id])
   opportunities       RobusClient[]  @relation("ClientOpportunities")
   pipelineStatus      PipelineStatus @default(INBOUND)
-  source              LeadSource?
+  relationshipLead    String?
+  buildLead           String? // internal-only, written at Converted
+  serviceLine         ServiceLine?
+  deliveryStage       DeliveryStage?
+  source              LeadSource     @default(OTHER)
   referredBy          String?
   contactName         String?
   contactEmail        String?
@@ -201,7 +224,7 @@ model CheckIn {
 model VerticalOverlay {
   id                     String        @id @default(cuid())
   vertical               String
-  status                 OverlayStatus @default(DRAFT)
+  status                 OverlayStatus // required, no default — must be an explicit choice at creation
   slotASizeBand          String? // size band + geography nuance, replaces the 5–100 universal default
   slotBTypicalWorkflows  String? // processes commonly run by hand, in owner's words
   slotCToolLandscape     String? // load-bearing — what they run, unused automation, addressable tools
@@ -209,7 +232,7 @@ model VerticalOverlay {
   slotERegulatoryContext String? // applicable regime and any established tool exclusions
   extraDisqualifiers     String?
   sourcePack             String? // filename of the source document this overlay was drawn from
-  lastReviewed           DateTime?
+  lastReviewed           DateTime? @db.Date // date-only, no time — six-month staleness review marker
 
   qualifications LeadQualification[]
 }

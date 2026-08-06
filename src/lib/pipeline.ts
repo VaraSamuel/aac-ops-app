@@ -58,6 +58,12 @@ export const QUALIFICATION_OUTCOME_LABELS: Record<QualificationOutcome, string> 
   NOT_QUALIFIED: "Not qualified",
 };
 
+// Written by Automation 3 when Outcome becomes Qualified — the only next
+// step value the spec defines, so there's nothing to store per-row.
+export function qualificationNextStep(outcome: QualificationOutcome): string | null {
+  return outcome === "QUALIFIED" ? "Schedule discovery" : null;
+}
+
 // ── Discovery Call ──────────────────────────────────────────────────────
 
 export type DiscoveryCallOutcome = "PROCEED" | "NURTURE" | "DECLINE";

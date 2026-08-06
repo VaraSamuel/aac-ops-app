@@ -5,7 +5,10 @@ import { OverlayRow } from "./OverlayRow";
 import { OverlayFields } from "./OverlayFields";
 
 export default async function OverlaysPage() {
-  const overlays = await prisma.verticalOverlay.findMany({ orderBy: { vertical: "asc" } });
+  const overlays = await prisma.verticalOverlay.findMany({
+    orderBy: { vertical: "asc" },
+    include: { _count: { select: { qualifications: true } } },
+  });
 
   return (
     <div className="p-8 max-w-4xl">
@@ -45,6 +48,7 @@ export default async function OverlaysPage() {
             key={o.id}
             overlay={o}
             reviewStale={!!o.lastReviewed && o.lastReviewed < new Date(Date.now() - 1000 * 60 * 60 * 24 * 182)}
+            qualificationsCount={o._count.qualifications}
           />
         ))}
       </div>

@@ -9,6 +9,9 @@ type Client = {
   contactPhone: string | null;
   source: string | null;
   referredBy: string | null;
+  relationshipLead: string | null;
+  buildLead: string | null;
+  serviceLine: string | null;
 };
 
 const inputClass = "w-full rounded-md border border-neutral-300 px-3 py-2 text-sm";
@@ -53,9 +56,28 @@ export function LeadIdentityForm({ clientId, client }: { clientId: string; clien
           <option value="OTHER">Other</option>
         </select>
       </label>
-      <label className="col-span-2">
+      <label>
         <span className="block text-xs font-medium text-neutral-600 mb-1">Referred by</span>
         <input name="referredBy" defaultValue={client.referredBy ?? ""} className={inputClass} />
+      </label>
+      <label>
+        <span className="block text-xs font-medium text-neutral-600 mb-1">Service line</span>
+        <select name="serviceLine" defaultValue={client.serviceLine ?? ""} className={inputClass}>
+          <option value="">—</option>
+          <option value="AI_READINESS_ASSESSMENT">AI Readiness Assessment</option>
+          <option value="AUTOMATION_SPRINT">Automation Sprint</option>
+          <option value="TOOL_SELECTION_ADVISORY">Tool Selection & Advisory</option>
+          <option value="AI_POLICY_GOVERNANCE_KIT">AI Policy & Governance Kit</option>
+          <option value="QUARTERLY_REVIEW">Quarterly Review</option>
+        </select>
+      </label>
+      <label>
+        <span className="block text-xs font-medium text-neutral-600 mb-1">Relationship Lead</span>
+        <input name="relationshipLead" defaultValue={client.relationshipLead ?? ""} className={inputClass} />
+      </label>
+      <label>
+        <span className="block text-xs font-medium text-neutral-600 mb-1">Build Lead (internal)</span>
+        <input name="buildLead" defaultValue={client.buildLead ?? ""} className={inputClass} />
       </label>
       <div className="col-span-2 flex items-center gap-3">
         <button

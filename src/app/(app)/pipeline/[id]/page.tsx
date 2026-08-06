@@ -56,6 +56,9 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
             contactPhone: client.contactPhone,
             source: client.source,
             referredBy: client.referredBy,
+            relationshipLead: client.relationshipLead,
+            buildLead: client.buildLead,
+            serviceLine: client.serviceLine,
           }}
         />
       </Section>
