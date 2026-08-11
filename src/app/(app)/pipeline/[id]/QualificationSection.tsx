@@ -17,6 +17,7 @@ import {
 } from "@/lib/pipeline";
 import { DeleteButton } from "@/components/DeleteButton";
 import { formatDate } from "@/lib/formatDate";
+import { SECTION_A, SECTION_B, SECTION_C, SECTION_D, SECTION_E, F_DISQUALIFIERS, type ChecklistItem } from "@/lib/qualificationChecklist";
 
 type Overlay = { id: string; vertical: string; status: string };
 
@@ -190,6 +191,32 @@ function QualificationForm({
 }) {
   const [isPending, startTransition] = useTransition();
 
+  // Controlled only for the fields the decision rule reads, so the outcome
+  // preview (and the conditional-required hints below) stay live as the
+  // partner works the checklist — the same computation the DB will run,
+  // just visible before saving instead of only after.
+  const [gates, setGates] = useState({
+    gateB1: existing?.gateB1 ?? false,
+    gateC1: existing?.gateC1 ?? false,
+    gateD1: existing?.gateD1 ?? false,
+    gateE1: existing?.gateE1 ?? false,
+    gateF4: existing?.gateF4 ?? false,
+  });
+  const [scores, setScores] = useState({
+    scoreA: existing?.scoreA ?? 0,
+    scoreB: existing?.scoreB ?? 0,
+    scoreC: existing?.scoreC ?? 0,
+    scoreD: existing?.scoreD ?? 0,
+    scoreE: existing?.scoreE ?? 0,
+  });
+  const [overrideApplied, setOverrideApplied] = useState(existing?.overrideApplied ?? false);
+  const [verticalOverlayId, setVerticalOverlayId] = useState(existing?.verticalOverlayId ?? "");
+
+  const total = qualificationTotal(scores);
+  const floor = workflowFloor(scores);
+  const liveOutcome = qualificationOutcome(gates, scores, overrideApplied);
+  const depth = verticalDepth(!!verticalOverlayId);
+
   return (
     <form
       action={(formData) => {
@@ -201,6 +228,18 @@ function QualificationForm({
       }}
       className="border border-indigo-200 bg-indigo-50/30 rounded-xl p-4 space-y-3"
     >
+      <div className="flex items-center justify-between gap-3 bg-white rounded-lg border border-neutral-200 px-3 py-2">
+        <div className="flex items-center gap-3 text-xs">
+          <span className={`font-medium px-2 py-0.5 rounded-full ${OUTCOME_BADGE[liveOutcome]}`}>{QUALIFICATION_OUTCOME_LABELS[liveOutcome]}</span>
+          <span className="text-neutral-500">Total {total}/30</span>
+          <span className="text-neutral-500">Workflow floor {floor}/14 (needs 8)</span>
+          <span className="text-neutral-400">{depth}</span>
+        </div>
+        {!verticalOverlayId && (
+          <span className="text-xs text-amber-700">No overlay — score A2 and C2 conservatively (max 1), never above 1 on C2.</span>
+        )}
+      </div>
+
       <div className="grid grid-cols-3 gap-2">
         <label>
           <span className="block text-xs font-medium text-neutral-600 mb-1">Prospect</span>
@@ -219,55 +258,95 @@ function QualificationForm({
           </select>
         </label>
         <label>
-          <span className="block text-xs font-medium text-neutral-600 mb-1">Run by</span>
+          <span className="block text-xs font-medium text-neutral-600 mb-1">Run by (Relationship Lead)</span>
           <input name="runBy" defaultValue={existing?.runBy ?? "Relationship Lead"} required className={inputClass} />
         </label>
       </div>
 
-      <div>
-        <p className="text-xs font-medium text-neutral-600 mb-1">Hard gates</p>
-        <div className="flex flex-wrap gap-3">
-          {(["gateB1", "gateC1", "gateD1", "gateE1", "gateF4"] as const).map((g) => (
-            <label key={g} className="flex items-center gap-1.5 text-xs text-neutral-700">
-              <input type="checkbox" name={g} defaultChecked={existing?.[g] ?? false} />
-              {g.toUpperCase()}
-            </label>
+      <ChecklistSection
+        letter="A"
+        title="Firm fit — is this a business the partner can serve at all? Nothing here is a gate."
+        items={SECTION_A}
+        score={scores.scoreA}
+        max={8}
+        onScoreChange={(v) => setScores((s) => ({ ...s, scoreA: v }))}
+      />
+      <ChecklistSection
+        letter="B"
+        title="Workflow fit — the real qualifier. B1 is the primary gate of the whole checklist."
+        items={SECTION_B}
+        score={scores.scoreB}
+        max={8}
+        gateValue={gates.gateB1}
+        onGateChange={(v) => setGates((g) => ({ ...g, gateB1: v }))}
+        onScoreChange={(v) => setScores((s) => ({ ...s, scoreB: v }))}
+      />
+      <ChecklistSection
+        letter="C"
+        title="AI-addressability — is at least one workflow something a tool available today could plausibly address?"
+        items={SECTION_C}
+        score={scores.scoreC}
+        max={6}
+        gateValue={gates.gateC1}
+        onGateChange={(v) => setGates((g) => ({ ...g, gateC1: v }))}
+        onScoreChange={(v) => setScores((s) => ({ ...s, scoreC: v }))}
+      />
+      <ChecklistSection
+        letter="D"
+        title="Buying readiness — can this actually close?"
+        items={SECTION_D}
+        score={scores.scoreD}
+        max={6}
+        gateValue={gates.gateD1}
+        onGateChange={(v) => setGates((g) => ({ ...g, gateD1: v }))}
+        onScoreChange={(v) => setScores((s) => ({ ...s, scoreD: v }))}
+      />
+      <ChecklistSection
+        letter="E"
+        title="Data and compliance context — surfaced now so it isn't discovered halfway through a Sprint."
+        items={SECTION_E}
+        score={scores.scoreE}
+        max={2}
+        gateValue={gates.gateE1}
+        onGateChange={(v) => setGates((g) => ({ ...g, gateE1: v }))}
+        onScoreChange={(v) => setScores((s) => ({ ...s, scoreE: v }))}
+      />
+
+      <label className="flex items-center gap-1.5 text-xs text-neutral-700">
+        <input
+          type="checkbox"
+          name="gateF4"
+          checked={gates.gateF4}
+          onChange={(e) => setGates((g) => ({ ...g, gateF4: e.target.checked }))}
+        />
+        F4 — on the service ladder (not a custom build, not an internal AI hire, not general IT support)
+      </label>
+
+      <details className="border border-neutral-200 rounded-lg px-3 py-2">
+        <summary className="cursor-pointer text-xs font-medium text-neutral-700">F1–F6 — hard disqualifiers, thirty-second scan</summary>
+        <div className="mt-2 space-y-1.5">
+          {F_DISQUALIFIERS.map((f) => (
+            <p key={f.ref} className="text-xs text-neutral-600">
+              <span className="font-medium text-neutral-800">{f.ref} — {f.name}</span> ({f.gate}). {f.meaning}
+            </p>
           ))}
         </div>
-      </div>
-
-      <div className="grid grid-cols-5 gap-2">
-        <label>
-          <span className="block text-xs font-medium text-neutral-600 mb-1">A (0–8)</span>
-          <input type="number" name="scoreA" min={0} max={8} defaultValue={existing?.scoreA ?? 0} className={inputClass} />
-        </label>
-        <label>
-          <span className="block text-xs font-medium text-neutral-600 mb-1">B (0–8)</span>
-          <input type="number" name="scoreB" min={0} max={8} defaultValue={existing?.scoreB ?? 0} className={inputClass} />
-        </label>
-        <label>
-          <span className="block text-xs font-medium text-neutral-600 mb-1">C (0–6)</span>
-          <input type="number" name="scoreC" min={0} max={6} defaultValue={existing?.scoreC ?? 0} className={inputClass} />
-        </label>
-        <label>
-          <span className="block text-xs font-medium text-neutral-600 mb-1">D (0–6)</span>
-          <input type="number" name="scoreD" min={0} max={6} defaultValue={existing?.scoreD ?? 0} className={inputClass} />
-        </label>
-        <label>
-          <span className="block text-xs font-medium text-neutral-600 mb-1">E (0–2)</span>
-          <input type="number" name="scoreE" min={0} max={2} defaultValue={existing?.scoreE ?? 0} className={inputClass} />
-        </label>
-      </div>
+      </details>
 
       <label className="block">
-        <span className="block text-xs font-medium text-neutral-600 mb-1">Compliance flags (E2 regime + E3 vendor requirement)</span>
+        <span className="block text-xs font-medium text-neutral-600 mb-1">Compliance flags (E2 regime + E3 vendor requirement — write &quot;none identified&quot; if none)</span>
         <input name="complianceFlags" defaultValue={existing?.complianceFlags ?? ""} className={inputClass} />
       </label>
 
       <div className="grid grid-cols-2 gap-2">
         <label>
           <span className="block text-xs font-medium text-neutral-600 mb-1">Vertical overlay</span>
-          <select name="verticalOverlayId" defaultValue={existing?.verticalOverlayId ?? ""} className={inputClass}>
+          <select
+            name="verticalOverlayId"
+            value={verticalOverlayId}
+            onChange={(e) => setVerticalOverlayId(e.target.value)}
+            className={inputClass}
+          >
             <option value="">— none (missing-depth flag) —</option>
             {overlays.map((o) => (
               <option key={o.id} value={o.id}>
@@ -277,24 +356,39 @@ function QualificationForm({
           </select>
         </label>
         <label className="flex items-center gap-1.5 text-xs text-neutral-700 pt-5">
-          <input type="checkbox" name="overrideApplied" defaultChecked={existing?.overrideApplied ?? false} />
-          Buying-readiness override (force Nurture)
+          <input
+            type="checkbox"
+            name="overrideApplied"
+            checked={overrideApplied}
+            onChange={(e) => setOverrideApplied(e.target.checked)}
+          />
+          Buying-readiness override — D2 and D3 both zero forces Nurture regardless of total
         </label>
       </div>
 
       <div className="grid grid-cols-3 gap-2">
         <label>
-          <span className="block text-xs font-medium text-neutral-600 mb-1">Follow-up date</span>
+          <span className="block text-xs font-medium text-neutral-600 mb-1">
+            Follow-up date {liveOutcome === "NURTURE" && <span className="text-red-600">(required — 60–90 days on a near miss, 6 months on a low score)</span>}
+          </span>
           <input
             type="date"
             name="followUpDate"
+            required={liveOutcome === "NURTURE"}
             defaultValue={existing?.followUpDate ? new Date(existing.followUpDate).toISOString().slice(0, 10) : ""}
             className={inputClass}
           />
         </label>
         <label>
-          <span className="block text-xs font-medium text-neutral-600 mb-1">Decline reason</span>
-          <input name="declineReason" defaultValue={existing?.declineReason ?? ""} className={inputClass} />
+          <span className="block text-xs font-medium text-neutral-600 mb-1">
+            Decline reason {liveOutcome === "NOT_QUALIFIED" && <span className="text-red-600">(required — name the gate that failed)</span>}
+          </span>
+          <input
+            name="declineReason"
+            required={liveOutcome === "NOT_QUALIFIED"}
+            defaultValue={existing?.declineReason ?? ""}
+            className={inputClass}
+          />
         </label>
         <label>
           <span className="block text-xs font-medium text-neutral-600 mb-1">Referred to</span>
@@ -315,5 +409,73 @@ function QualificationForm({
         </button>
       </div>
     </form>
+  );
+}
+
+function ChecklistSection({
+  letter,
+  title,
+  items,
+  score,
+  max,
+  gateValue,
+  onGateChange,
+  onScoreChange,
+}: {
+  letter: string;
+  title: string;
+  items: ChecklistItem[];
+  score: number;
+  max: number;
+  gateValue?: boolean;
+  onGateChange?: (v: boolean) => void;
+  onScoreChange: (v: number) => void;
+}) {
+  const gateItem = items.find((i) => i.type === "GATE");
+  const signalItems = items.filter((i) => i.type !== "GATE");
+
+  return (
+    <details className="border border-neutral-200 rounded-lg px-3 py-2" open>
+      <summary className="cursor-pointer text-xs font-medium text-neutral-800">
+        {letter} · {title}
+      </summary>
+      <div className="mt-2 space-y-2">
+        {gateItem && onGateChange && (
+          <label className="flex items-start gap-2 bg-red-50/50 border border-red-100 rounded-md px-2 py-1.5">
+            <input
+              type="checkbox"
+              name={`gate${letter}1`}
+              className="mt-0.5"
+              checked={gateValue}
+              onChange={(e) => onGateChange(e.target.checked)}
+            />
+            <span className="text-xs text-neutral-700">
+              <span className="font-medium">{gateItem.ref} · GATE</span> — {gateItem.question}
+              <br />
+              <span className="text-neutral-500">{gateItem.rubric}</span>
+            </span>
+          </label>
+        )}
+        {signalItems.map((item) => (
+          <div key={item.ref} className="text-xs text-neutral-700">
+            <span className="font-medium">{item.ref} · {item.type}</span> — {item.question}
+            <br />
+            <span className="text-neutral-500">{item.rubric}</span>
+          </div>
+        ))}
+        <label className="flex items-center gap-2 pt-1">
+          <span className="text-xs font-medium text-neutral-600">Section {letter} subtotal (0–{max})</span>
+          <input
+            type="number"
+            min={0}
+            max={max}
+            name={`score${letter}`}
+            value={score}
+            onChange={(e) => onScoreChange(Number(e.target.value))}
+            className="w-20 rounded-md border border-neutral-300 px-2 py-1 text-xs"
+          />
+        </label>
+      </div>
+    </details>
   );
 }
