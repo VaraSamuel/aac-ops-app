@@ -67,7 +67,11 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
         <QualificationSection
           clientId={client.id}
           defaultProspectName={client.name}
-          qualifications={client.qualifications}
+          qualifications={client.qualifications.map((q) => ({
+            ...q,
+            itemScores: (q.itemScores ?? {}) as Record<string, number>,
+            itemNotes: (q.itemNotes ?? {}) as Record<string, string>,
+          }))}
           overlays={overlays.map((o) => ({ id: o.id, vertical: o.vertical, status: o.status }))}
         />
       </Section>

@@ -3,34 +3,67 @@
 // value here is computed from raw stored inputs, never itself stored —
 // same rule as the AI Opportunity Scoring Matrix (src/lib/scoring.ts).
 
+export type GateStatus = "PASS" | "FAIL" | null;
+
 export type QualificationGates = {
-  gateB1: boolean;
-  gateC1: boolean;
-  gateD1: boolean;
-  gateE1: boolean;
-  gateF4: boolean;
+  gateB1: GateStatus;
+  gateC1: GateStatus;
+  gateD1: GateStatus;
+  gateE1: GateStatus;
+  gateF4: GateStatus;
 };
 
-export type QualificationScores = {
-  scoreA: number;
-  scoreB: number;
-  scoreC: number;
-  scoreD: number;
-  scoreE: number;
-};
+// One 0/1/2 entry per SIGNAL ref (A1-A4, B2-B5, C2-C4, D2-D4, E4 — fifteen
+// in all). Section subtotals and the total are always summed from this,
+// never themselves stored.
+export type ItemScores = Partial<Record<string, number>>;
+
+export const SIGNAL_REFS = {
+  A: ["A1", "A2", "A3", "A4"],
+  B: ["B2", "B3", "B4", "B5"],
+  C: ["C2", "C3", "C4"],
+  D: ["D2", "D3", "D4"],
+  E: ["E4"],
+} as const;
+
+// Every ref row a partner can attach a note to — the fifteen signals plus
+// the five gates. E2/E3 aren't here: they're FLAG rows with their own
+// dedicated text field (regimeFlag/vendorRequirement), not a note-on-a-score.
+export const NOTE_REFS = [
+  "A1", "A2", "A3", "A4",
+  "B1", "B2", "B3", "B4", "B5",
+  "C1", "C2", "C3", "C4",
+  "D1", "D2", "D3", "D4",
+  "E1", "E4",
+  "F4",
+] as const;
+
+function sumRefs(scores: ItemScores, refs: readonly string[]): number {
+  return refs.reduce((sum, ref) => sum + (scores[ref] ?? 0), 0);
+}
+
+export function sectionScore(scores: ItemScores, section: keyof typeof SIGNAL_REFS): number {
+  return sumRefs(scores, SIGNAL_REFS[section]);
+}
 
 export type QualificationOutcome = "QUALIFIED" | "NURTURE" | "NOT_QUALIFIED";
 
 // Total out of 30 — displayed, not itself a decision.
-export function qualificationTotal(s: QualificationScores): number {
-  return s.scoreA + s.scoreB + s.scoreC + s.scoreD + s.scoreE;
+export function qualificationTotal(scores: ItemScores): number {
+  return (
+    sectionScore(scores, "A") +
+    sectionScore(scores, "B") +
+    sectionScore(scores, "C") +
+    sectionScore(scores, "D") +
+    sectionScore(scores, "E")
+  );
 }
 
-// Workflow floor out of 14 (Score B + Score C) — the real qualifier. A
+// Workflow floor out of 14 (Section B + Section C) — the real qualifier. A
 // prospect cannot reach Qualified on firm fit and buying enthusiasm alone
 // while the actual work is thin.
-export function workflowFloor(s: QualificationScores): number {
-  return s.scoreB + s.scoreC;
+export function workflowFloor(scores: ItemScores): number {
+  return sectionScore(scores, "B") + sectionScore(scores, "C");
 }
 
 export function verticalDepth(hasOverlay: boolean): "MISSING - universal criteria only" | "Overlay applied" {
@@ -39,13 +72,16 @@ export function verticalDepth(hasOverlay: boolean): "MISSING - universal criteri
 
 // The decision rule, in order: gates first, then the workflow floor, then
 // the buying-readiness override, then the total. Reordering this changes
-// which leads qualify — do not reorder.
+// which leads qualify — do not reorder. A gate left unresolved (null) is
+// not a pass, so it falls through the same as a fail — the honest reading
+// of "hold the lead rather than guessing a pass".
 export function qualificationOutcome(
   gates: QualificationGates,
-  scores: QualificationScores,
+  scores: ItemScores,
   overrideApplied: boolean
 ): QualificationOutcome {
-  const allGatesPassed = gates.gateB1 && gates.gateC1 && gates.gateD1 && gates.gateE1 && gates.gateF4;
+  const allGatesPassed =
+    gates.gateB1 === "PASS" && gates.gateC1 === "PASS" && gates.gateD1 === "PASS" && gates.gateE1 === "PASS" && gates.gateF4 === "PASS";
   if (!allGatesPassed) return "NOT_QUALIFIED";
   if (workflowFloor(scores) < 8) return "NURTURE";
   if (overrideApplied) return "NURTURE";

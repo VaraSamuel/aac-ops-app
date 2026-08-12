@@ -136,6 +136,11 @@ enum BudgetSignal {
   NOT_OBTAINED
 }
 
+enum GateStatus {
+  PASS
+  FAIL
+}
+
 enum ServiceLine {
   AI_READINESS_ASSESSMENT
   AUTOMATION_SPRINT
@@ -246,19 +251,27 @@ model LeadQualification {
   dateRun      DateTime    @default(now())
   runBy        String // role name — "Relationship Lead", never a Build Lead
 
-  gateB1 Boolean @default(false) // can you name at least one specific repeated process?
-  gateC1 Boolean @default(false) // is at least one workflow plausibly AI-addressable today?
-  gateD1 Boolean @default(false) // is the approving decision-maker identifiable and reachable?
-  gateE1 Boolean @default(false) // no regulatory context that rules out every compliant tool?
-  gateF4 Boolean @default(false) // is the request on the service ladder (not custom build, not IT support)?
+  // Pass/Fail selection, per the checklist's own field-type note. Null means
+  // unresolved — the honest state when the material genuinely doesn't say —
+  // rather than defaulting to a guessed pass or fail.
+  gateB1 GateStatus? // can you name at least one specific repeated process?
+  gateC1 GateStatus? // is at least one workflow plausibly AI-addressable today?
+  gateD1 GateStatus? // is the approving decision-maker identifiable and reachable?
+  gateE1 GateStatus? // no regulatory context that rules out every compliant tool?
+  gateF4 GateStatus? // is the request on the service ladder (not custom build, not IT support)?
 
-  scoreA Int @default(0) // firm fit, 0–8
-  scoreB Int @default(0) // workflow fit, 0–8
-  scoreC Int @default(0) // AI-addressability, 0–6
-  scoreD Int @default(0) // buying readiness, 0–6
-  scoreE Int @default(0) // data & compliance context, 0–2
+  // One 0/1/2 dropdown per SIGNAL row (A1-A4, B2-B5, C2-C4, D2-D4, E4 — 15
+  // in all), keyed by ref. Section subtotals (Score A-E) and Total are
+  // always computed by summing these — never themselves stored — same
+  // "grey cells calculate" rule as the AI Opportunity Scoring Matrix.
+  itemScores Json @default("{}")
 
-  complianceFlags String? // E2 regime answer + E3 vendor requirement, free text
+  // Free-text notes, one per ref row (every A-F row a partner can annotate),
+  // keyed the same way as itemScores.
+  itemNotes Json @default("{}")
+
+  regimeFlag        String? // E2 — which regime, if any, applies. "none identified" if none.
+  vendorRequirement String? // E3 — any known vendor requirement (BAA, data residency, confidentiality undertaking)
 
   verticalOverlayId String?
   verticalOverlay   VerticalOverlay? @relation(fields: [verticalOverlayId], references: [id])

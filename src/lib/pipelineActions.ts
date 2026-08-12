@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/requireAuth";
+import { SIGNAL_REFS, NOTE_REFS } from "@/lib/pipeline";
 
 const VERTICALS = ["CPA", "LAW", "REAL_ESTATE", "RESTAURANT", "NAIL_SALON", "ARCHITECTURE", "HOSPITALITY", "OTHER"] as const;
 const LEAD_SOURCES = [
@@ -177,21 +178,15 @@ export async function deleteLead(clientId: string) {
 }
 
 // ── Lead Qualification ───────────────────────────────────────────────────
+const GATE_STATUSES = ["PASS", "FAIL"] as const;
+const GATE_KEYS = ["gateB1", "gateC1", "gateD1", "gateE1", "gateF4"] as const;
+
 const qualificationSchema = z.object({
   prospectName: z.string().trim().min(1),
   source: z.enum(LEAD_SOURCES),
   runBy: z.string().trim().min(1),
-  gateB1: z.string().optional(),
-  gateC1: z.string().optional(),
-  gateD1: z.string().optional(),
-  gateE1: z.string().optional(),
-  gateF4: z.string().optional(),
-  scoreA: z.string().optional(),
-  scoreB: z.string().optional(),
-  scoreC: z.string().optional(),
-  scoreD: z.string().optional(),
-  scoreE: z.string().optional(),
-  complianceFlags: z.string().optional(),
+  regimeFlag: z.string().optional(),
+  vendorRequirement: z.string().optional(),
   verticalOverlayId: z.string().optional(),
   overrideApplied: z.string().optional(),
   followUpDate: z.string().optional(),
@@ -201,21 +196,36 @@ const qualificationSchema = z.object({
 
 function parseQualificationForm(formData: FormData) {
   const parsed = qualificationSchema.parse(Object.fromEntries(formData.entries()));
+
+  const gates: Record<string, "PASS" | "FAIL" | null> = {};
+  for (const key of GATE_KEYS) {
+    const raw = formData.get(key);
+    gates[key] = raw && GATE_STATUSES.includes(raw as never) ? (raw as "PASS" | "FAIL") : null;
+  }
+
+  const itemScores: Record<string, number> = {};
+  for (const refs of Object.values(SIGNAL_REFS)) {
+    for (const ref of refs) {
+      const raw = formData.get(`score_${ref}`);
+      if (raw !== null && raw !== "") itemScores[ref] = Number(raw);
+    }
+  }
+
+  const itemNotes: Record<string, string> = {};
+  for (const ref of NOTE_REFS) {
+    const raw = formData.get(`note_${ref}`);
+    if (typeof raw === "string" && raw.trim()) itemNotes[ref] = raw.trim();
+  }
+
   return {
     prospectName: parsed.prospectName,
     source: parsed.source,
     runBy: parsed.runBy,
-    gateB1: parsed.gateB1 === "on",
-    gateC1: parsed.gateC1 === "on",
-    gateD1: parsed.gateD1 === "on",
-    gateE1: parsed.gateE1 === "on",
-    gateF4: parsed.gateF4 === "on",
-    scoreA: Number(parsed.scoreA ?? 0),
-    scoreB: Number(parsed.scoreB ?? 0),
-    scoreC: Number(parsed.scoreC ?? 0),
-    scoreD: Number(parsed.scoreD ?? 0),
-    scoreE: Number(parsed.scoreE ?? 0),
-    complianceFlags: parsed.complianceFlags || null,
+    ...gates,
+    itemScores,
+    itemNotes,
+    regimeFlag: parsed.regimeFlag || null,
+    vendorRequirement: parsed.vendorRequirement || null,
     verticalOverlayId: parsed.verticalOverlayId || null,
     overrideApplied: parsed.overrideApplied === "on",
     followUpDate: parsed.followUpDate ? new Date(parsed.followUpDate) : null,
