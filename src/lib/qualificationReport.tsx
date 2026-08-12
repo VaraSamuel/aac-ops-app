@@ -70,16 +70,21 @@ export type QualificationReportData = {
   referredTo: string | null;
 };
 
-function findingFor(item: ChecklistItem, notes: Record<string, string>): string {
-  return notes[item.ref]?.trim() || "No notes recorded.";
+function findingFor(item: ChecklistItem, data: QualificationReportData): string {
+  if (item.type === "FLAG") {
+    const text = item.ref === "E2" ? data.regimeFlag : data.vendorRequirement;
+    return text?.trim() || "Not recorded.";
+  }
+  return data.itemNotes[item.ref]?.trim() || "No notes recorded.";
 }
 
-function scoreFor(item: ChecklistItem, scores: ItemScores, gates: Record<string, GateStatus>, gateKey?: string): string {
+function scoreFor(item: ChecklistItem, data: QualificationReportData, gateKey?: string): string {
   if (item.type === "GATE") {
-    const v = gateKey ? gates[gateKey] : null;
+    const v = gateKey ? data.gates[gateKey] : null;
     return v === "PASS" ? "PASS" : v === "FAIL" ? "FAIL" : "—";
   }
-  const v = scores[item.ref];
+  if (item.type === "FLAG") return "—";
+  const v = data.itemScores[item.ref];
   return v === undefined ? "—" : String(v);
 }
 
@@ -110,23 +115,14 @@ function SectionTable({
           <Text style={[styles.headerCell, { flex: 1 }]}>What was found</Text>
           <Text style={[styles.headerCell, { width: 40, textAlign: "right" }]}>Score</Text>
         </View>
-        {items
-          .filter((i) => i.type !== "FLAG")
-          .map((item) => (
-            <View style={styles.row} key={item.ref}>
-              <Text style={styles.refCell}>{item.ref}</Text>
-              <Text style={styles.findingCell}>{findingFor(item, data.itemNotes)}</Text>
-              <Text style={styles.scoreCell}>{scoreFor(item, data.itemScores, data.gates, item.type === "GATE" ? gateKey : undefined)}</Text>
-            </View>
-          ))}
-      </View>
-      {items
-        .filter((i) => i.type === "FLAG")
-        .map((item) => (
-          <Text key={item.ref} style={{ fontSize: 8.5, color: "#737373", marginTop: 4 }}>
-            {item.ref}: {item.ref === "E2" ? data.regimeFlag || "none recorded" : data.vendorRequirement || "none recorded"}
-          </Text>
+        {items.map((item) => (
+          <View style={styles.row} key={item.ref}>
+            <Text style={styles.refCell}>{item.ref}</Text>
+            <Text style={styles.findingCell}>{findingFor(item, data)}</Text>
+            <Text style={styles.scoreCell}>{scoreFor(item, data, item.type === "GATE" ? gateKey : undefined)}</Text>
+          </View>
         ))}
+      </View>
       <View style={styles.overlayBox}>
         <Text style={styles.overlayLabel}>{meta.overlaySlot}</Text>
         <Text style={styles.overlayText}>{meta.overlayNote}</Text>
@@ -175,8 +171,8 @@ export function QualificationReportDocument({ data }: { data: QualificationRepor
           <View style={styles.table}>
             <View style={styles.row}>
               <Text style={styles.refCell}>F4</Text>
-              <Text style={styles.findingCell}>{findingFor(F4_GATE, data.itemNotes)}</Text>
-              <Text style={styles.scoreCell}>{scoreFor(F4_GATE, data.itemScores, data.gates, "gateF4")}</Text>
+              <Text style={styles.findingCell}>{findingFor(F4_GATE, data)}</Text>
+              <Text style={styles.scoreCell}>{scoreFor(F4_GATE, data, "gateF4")}</Text>
             </View>
           </View>
         </View>

@@ -185,7 +185,129 @@ function QualificationRow({ clientId, q, overlays }: { clientId: string; q: Qual
           {q.referredTo && ` · Referred to ${q.referredTo}`}
         </p>
       )}
+
+      <CondensedReport q={q} outcome={outcome} total={total} floor={floor} />
     </div>
+  );
+}
+
+const OUTCOME_TONE: Record<string, { bg: string; text: string }> = {
+  QUALIFIED: { bg: "bg-emerald-50 border-emerald-100", text: "text-emerald-900" },
+  NURTURE: { bg: "bg-amber-50 border-amber-100", text: "text-amber-900" },
+  NOT_QUALIFIED: { bg: "bg-red-50 border-red-100", text: "text-red-900" },
+};
+
+// The same shape as the Examples page — Ref / What was found / Score, per
+// section — but populated from this qualification's real data instead of
+// the illustrative examples.
+function CondensedReport({
+  q,
+  outcome,
+  total,
+  floor,
+}: {
+  q: Qualification;
+  outcome: "QUALIFIED" | "NURTURE" | "NOT_QUALIFIED";
+  total: number;
+  floor: number;
+}) {
+  const sections: { letter: keyof typeof SIGNAL_REFS; items: ChecklistItem[]; max: number }[] = [
+    { letter: "A", items: SECTION_A, max: 8 },
+    { letter: "B", items: SECTION_B, max: 8 },
+    { letter: "C", items: SECTION_C, max: 6 },
+    { letter: "D", items: SECTION_D, max: 6 },
+    { letter: "E", items: SECTION_E, max: 2 },
+  ];
+  const gates: Record<string, GateStatus> = { gateB1: q.gateB1, gateC1: q.gateC1, gateD1: q.gateD1, gateE1: q.gateE1, gateF4: q.gateF4 };
+  const tone = OUTCOME_TONE[outcome];
+
+  return (
+    <details className="mt-3 border-t border-neutral-100 pt-3" open>
+      <summary className="cursor-pointer text-xs font-medium text-neutral-500 hover:text-neutral-800">Full report</summary>
+      <div className="mt-2 space-y-3">
+        {sections.map(({ letter, items, max }) => (
+          <div key={letter}>
+            <p className="text-xs font-semibold text-neutral-700 mb-1">
+              {letter} · {sectionScore(q.itemScores, letter)}/{max}
+            </p>
+            <div className="border border-neutral-200 rounded-lg overflow-hidden">
+              <table className="w-full text-xs">
+                <thead className="bg-neutral-50 text-neutral-400 uppercase tracking-wide">
+                  <tr>
+                    <th className="text-left px-2 py-1 font-medium w-10">Ref</th>
+                    <th className="text-left px-2 py-1 font-medium">What was found</th>
+                    <th className="text-right px-2 py-1 font-medium w-14">Score</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {items
+                    .filter((item) => item.type !== "FLAG")
+                    .map((item) => {
+                      const gateKey = `gate${letter}1`;
+                      const scoreDisplay =
+                        item.type === "GATE"
+                          ? gates[gateKey] === "PASS"
+                            ? "PASS"
+                            : gates[gateKey] === "FAIL"
+                              ? "FAIL"
+                              : "—"
+                          : (q.itemScores[item.ref] ?? "—");
+                      return (
+                        <tr key={item.ref}>
+                          <td className="px-2 py-1.5 align-top font-medium text-neutral-800 whitespace-nowrap">{item.ref}</td>
+                          <td className="px-2 py-1.5 align-top text-neutral-600">{q.itemNotes[item.ref] || "No notes recorded."}</td>
+                          <td className="px-2 py-1.5 align-top text-right font-medium text-neutral-900">{scoreDisplay}</td>
+                        </tr>
+                      );
+                    })}
+                  {letter === "E" && (
+                    <>
+                      <tr>
+                        <td className="px-2 py-1.5 align-top font-medium text-neutral-800">E2</td>
+                        <td colSpan={2} className="px-2 py-1.5 align-top text-neutral-600">
+                          Regime: {q.regimeFlag || "not recorded"}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-2 py-1.5 align-top font-medium text-neutral-800">E3</td>
+                        <td colSpan={2} className="px-2 py-1.5 align-top text-neutral-600">
+                          Vendor requirement: {q.vendorRequirement || "not recorded"}
+                        </td>
+                      </tr>
+                    </>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+
+        <div>
+          <p className="text-xs font-semibold text-neutral-700 mb-1">F4</p>
+          <div className="border border-neutral-200 rounded-lg overflow-hidden">
+            <table className="w-full text-xs">
+              <tbody>
+                <tr>
+                  <td className="px-2 py-1.5 align-top font-medium text-neutral-800 w-10">F4</td>
+                  <td className="px-2 py-1.5 align-top text-neutral-600">{q.itemNotes.F4 || "No notes recorded."}</td>
+                  <td className="px-2 py-1.5 align-top text-right font-medium text-neutral-900 w-14">
+                    {gates.gateF4 === "PASS" ? "PASS" : gates.gateF4 === "FAIL" ? "FAIL" : "—"}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className={`rounded-lg border px-3 py-2 ${tone.bg}`}>
+          <p className={`text-xs font-semibold ${tone.text}`}>OUTCOME — {QUALIFICATION_OUTCOME_LABELS[outcome]}</p>
+          <p className={`text-xs mt-1 ${tone.text}`}>
+            Total {total} of 30. Workflow floor {floor} of 14 — {floor >= 8 ? "cleared" : "not cleared"}.
+            {q.overrideApplied && " Buying-readiness override applied."}
+          </p>
+        </div>
+      </div>
+    </details>
   );
 }
 
@@ -218,6 +340,10 @@ function QualificationForm({
   );
   const [overrideApplied, setOverrideApplied] = useState(existing?.overrideApplied ?? false);
   const [verticalOverlayId, setVerticalOverlayId] = useState(existing?.verticalOverlayId ?? "");
+  const [flagValues, setFlagValues] = useState<Record<string, string>>({
+    E2: existing?.regimeFlag ?? "",
+    E3: existing?.vendorRequirement ?? "",
+  });
 
   const total = qualificationTotal(itemScores);
   const floor = workflowFloor(itemScores);
@@ -337,21 +463,11 @@ function QualificationForm({
         itemScores={itemScores}
         itemNotes={itemNotes}
         gates={gates}
+        flagValues={flagValues}
         onScoreChange={(ref, v) => setItemScores((s) => ({ ...s, [ref]: v }))}
         onNoteChange={(ref, v) => setItemNotes((n) => ({ ...n, [ref]: v }))}
         onGateChange={(ref, v) => setGates((g) => ({ ...g, [ref]: v }))}
-        extra={
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <label>
-              <span className="block text-xs font-medium text-neutral-600 mb-1">E2 — regime, if any (write &quot;none identified&quot; if none)</span>
-              <input name="regimeFlag" defaultValue={existing?.regimeFlag ?? ""} className={inputClass} />
-            </label>
-            <label>
-              <span className="block text-xs font-medium text-neutral-600 mb-1">E3 — known vendor requirement</span>
-              <input name="vendorRequirement" defaultValue={existing?.vendorRequirement ?? ""} className={inputClass} />
-            </label>
-          </div>
-        }
+        onFlagChange={(ref, v) => setFlagValues((f) => ({ ...f, [ref]: v }))}
       />
 
       <details className="border border-neutral-200 rounded-lg px-3 py-2" open>
@@ -493,6 +609,9 @@ function GateRow({
   );
 }
 
+const FLAG_FIELD_NAME: Record<string, string> = { E2: "regimeFlag", E3: "vendorRequirement" };
+const FLAG_PLACEHOLDER: Record<string, string> = { E2: 'e.g. "none identified"', E3: 'e.g. "none stated"' };
+
 function ChecklistSection({
   letter,
   title,
@@ -501,10 +620,11 @@ function ChecklistSection({
   itemScores,
   itemNotes,
   gates,
+  flagValues,
   onScoreChange,
   onNoteChange,
   onGateChange,
-  extra,
+  onFlagChange,
 }: {
   letter: string;
   title: string;
@@ -513,14 +633,12 @@ function ChecklistSection({
   itemScores: Record<string, number | undefined>;
   itemNotes: Record<string, string>;
   gates: Record<string, GateStatus>;
+  flagValues?: Record<string, string>;
   onScoreChange: (ref: string, v: number) => void;
   onNoteChange: (ref: string, v: string) => void;
   onGateChange: (gateKey: string, v: GateStatus) => void;
-  extra?: React.ReactNode;
+  onFlagChange?: (ref: string, v: string) => void;
 }) {
-  const gateItem = items.find((i) => i.type === "GATE");
-  const signalItems = items.filter((i) => i.type === "SIGNAL");
-  const flagItems = items.filter((i) => i.type === "FLAG");
   const gateKey = `gate${letter}1`;
   const score = sectionScore(itemScores, letter as keyof typeof SIGNAL_REFS);
 
@@ -530,51 +648,69 @@ function ChecklistSection({
         {letter} · {title} — Section subtotal {score}/{max}
       </summary>
       <div className="mt-2 space-y-2">
-        {gateItem && (
-          <GateRow
-            gateKey={gateKey}
-            item={gateItem}
-            value={gates[gateKey] ?? null}
-            note={itemNotes[gateItem.ref] ?? ""}
-            onGateChange={(v) => onGateChange(gateKey, v)}
-            onNoteChange={(v) => onNoteChange(gateItem.ref, v)}
-          />
-        )}
-        {signalItems.map((item) => (
-          <div key={item.ref} className="space-y-1">
-            <div className="flex items-start gap-2">
-              <select
-                name={`score_${item.ref}`}
-                value={itemScores[item.ref] ?? ""}
-                onChange={(e) => onScoreChange(item.ref, Number(e.target.value))}
-                className="text-xs rounded-md border border-neutral-300 px-1.5 py-1 shrink-0 w-14"
-              >
-                <option value="">—</option>
-                <option value="0">0</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-              </select>
-              <span className="text-xs text-neutral-700">
-                <span className="font-medium">{item.ref} · SIGNAL</span> — {item.question}
-                <br />
-                <span className="text-neutral-500">{item.rubric}</span>
-              </span>
+        {items.map((item) => {
+          if (item.type === "GATE") {
+            return (
+              <GateRow
+                key={item.ref}
+                gateKey={gateKey}
+                item={item}
+                value={gates[gateKey] ?? null}
+                note={itemNotes[item.ref] ?? ""}
+                onGateChange={(v) => onGateChange(gateKey, v)}
+                onNoteChange={(v) => onNoteChange(item.ref, v)}
+              />
+            );
+          }
+          if (item.type === "FLAG") {
+            return (
+              <div key={item.ref} className="space-y-1 bg-sky-50/50 border border-sky-100 rounded-md px-2 py-1.5">
+                <span className="text-xs text-neutral-700">
+                  <span className="font-medium">{item.ref} · FLAG</span> — {item.question}
+                  <br />
+                  <span className="text-neutral-500">{item.rubric}</span>
+                </span>
+                <input
+                  name={FLAG_FIELD_NAME[item.ref]}
+                  value={flagValues?.[item.ref] ?? ""}
+                  onChange={(e) => onFlagChange?.(item.ref, e.target.value)}
+                  placeholder={FLAG_PLACEHOLDER[item.ref] ?? ""}
+                  className="w-full rounded-md border border-neutral-300 px-2 py-1 text-xs"
+                />
+              </div>
+            );
+          }
+          // SIGNAL
+          return (
+            <div key={item.ref} className="space-y-1">
+              <div className="flex items-start gap-2">
+                <select
+                  name={`score_${item.ref}`}
+                  value={itemScores[item.ref] ?? ""}
+                  onChange={(e) => onScoreChange(item.ref, Number(e.target.value))}
+                  className="text-xs rounded-md border border-neutral-300 px-1.5 py-1 shrink-0 w-14"
+                >
+                  <option value="">—</option>
+                  <option value="0">0</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                </select>
+                <span className="text-xs text-neutral-700">
+                  <span className="font-medium">{item.ref} · SIGNAL</span> — {item.question}
+                  <br />
+                  <span className="text-neutral-500">{item.rubric}</span>
+                </span>
+              </div>
+              <input
+                name={`note_${item.ref}`}
+                value={itemNotes[item.ref] ?? ""}
+                onChange={(e) => onNoteChange(item.ref, e.target.value)}
+                placeholder="Notes…"
+                className="w-full rounded-md border border-neutral-300 px-2 py-1 text-xs"
+              />
             </div>
-            <input
-              name={`note_${item.ref}`}
-              value={itemNotes[item.ref] ?? ""}
-              onChange={(e) => onNoteChange(item.ref, e.target.value)}
-              placeholder="Notes…"
-              className="w-full rounded-md border border-neutral-300 px-2 py-1 text-xs"
-            />
-          </div>
-        ))}
-        {flagItems.map((item) => (
-          <p key={item.ref} className="text-xs text-neutral-500">
-            <span className="font-medium text-neutral-700">{item.ref} · FLAG</span> — {item.question} {item.rubric}
-          </p>
-        ))}
-        {extra}
+          );
+        })}
       </div>
     </details>
   );
