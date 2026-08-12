@@ -154,6 +154,12 @@ function QualificationRow({ clientId, q, overlays }: { clientId: string; q: Qual
             />
             Complete
           </label>
+          <a
+            href={`/pipeline/${clientId}/qualification/${q.id}/download`}
+            className="text-xs font-medium text-neutral-500 hover:text-neutral-800"
+          >
+            ⬇ Report (PDF)
+          </a>
           <button onClick={() => setEditing(true)} className="text-xs font-medium text-neutral-500 hover:text-neutral-800">
             Edit
           </button>

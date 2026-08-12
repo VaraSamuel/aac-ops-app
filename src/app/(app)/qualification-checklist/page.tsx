@@ -146,21 +146,23 @@ export default async function QualificationChecklistPage() {
             const total = qualificationTotal(itemScores);
             const floor = workflowFloor(itemScores);
             return (
-              <Link
-                key={q.id}
-                href={`/pipeline/${q.client.id}`}
-                className="flex items-center justify-between gap-3 py-3 hover:bg-neutral-50 -mx-2 px-2 rounded-lg"
-              >
-                <div>
+              <div key={q.id} className="flex items-center justify-between gap-3 py-3 -mx-2 px-2 rounded-lg hover:bg-neutral-50">
+                <Link href={`/pipeline/${q.client.id}`} className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-neutral-900">{q.prospectName}</p>
                   <p className="text-xs text-neutral-500">
                     Total {total}/30 · Workflow floor {floor}/14 · Run by {q.runBy}
                   </p>
-                </div>
+                </Link>
+                <a
+                  href={`/pipeline/${q.client.id}/qualification/${q.id}/download`}
+                  className="shrink-0 text-xs font-medium text-neutral-500 hover:text-neutral-800"
+                >
+                  ⬇ PDF
+                </a>
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${OUTCOME_BADGE[outcome]}`}>
                   {QUALIFICATION_OUTCOME_LABELS[outcome]}
                 </span>
-              </Link>
+              </div>
             );
           })}
         </div>
