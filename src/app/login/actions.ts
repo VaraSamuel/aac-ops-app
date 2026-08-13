@@ -3,6 +3,10 @@
 import { signIn } from "@/auth";
 import { AuthError } from "next-auth";
 
+export async function loginWithGoogle() {
+  await signIn("google", { redirectTo: "/clients" });
+}
+
 export async function loginAction(_prevState: string | undefined, formData: FormData) {
   const email = formData.get("email");
   const password = formData.get("password");
