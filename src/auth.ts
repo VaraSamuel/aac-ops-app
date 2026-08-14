@@ -22,8 +22,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   providers: [
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      // Trimmed defensively — some env-var UIs (Render's included) leave a
+      // trailing newline on a pasted value, and Google's client_id match is
+      // exact-string, so an untrimmed value fails as "invalid_client" with
+      // no indication why.
+      clientId: process.env.GOOGLE_CLIENT_ID?.trim(),
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET?.trim(),
     }),
     Credentials({
       credentials: {
