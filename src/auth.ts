@@ -12,6 +12,9 @@ const GOOGLE_ALLOWED_EMAILS = new Set([
   "samuelprabhakarvara@gmail.com",
   "zach@robusworksai.com",
   "powell.david13@gmail.com",
+  "groomekevin@gmail.com",
+  "samuelrobus7@gmail.com",
+  "tekiadavisflorence@gmail.com",
 ]);
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
