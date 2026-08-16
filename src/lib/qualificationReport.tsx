@@ -47,6 +47,7 @@ const styles = StyleSheet.create({
 
 const OUTCOME_COLOR: Record<string, { bg: string; fg: string }> = {
   QUALIFIED: { bg: "#ecfdf5", fg: "#047857" },
+  CONDITIONALLY_QUALIFIED: { bg: "#eff6ff", fg: "#1d4ed8" },
   NURTURE: { bg: "#fffbeb", fg: "#b45309" },
   NOT_QUALIFIED: { bg: "#fef2f2", fg: "#b91c1c" },
 };

@@ -18,6 +18,7 @@ import {
   QUALIFICATION_OUTCOME_LABELS,
   type GateStatus,
   type ItemScores,
+  type QualificationOutcome,
 } from "@/lib/pipeline";
 import { DeleteButton } from "@/components/DeleteButton";
 import { formatDate } from "@/lib/formatDate";
@@ -50,6 +51,7 @@ type Qualification = {
 
 const OUTCOME_BADGE: Record<string, string> = {
   QUALIFIED: "bg-emerald-50 text-emerald-700",
+  CONDITIONALLY_QUALIFIED: "bg-sky-50 text-sky-700",
   NURTURE: "bg-amber-50 text-amber-700",
   NOT_QUALIFIED: "bg-red-50 text-red-700",
 };
@@ -193,6 +195,7 @@ function QualificationRow({ clientId, q, overlays }: { clientId: string; q: Qual
 
 const OUTCOME_TONE: Record<string, { bg: string; text: string }> = {
   QUALIFIED: { bg: "bg-emerald-50 border-emerald-100", text: "text-emerald-900" },
+  CONDITIONALLY_QUALIFIED: { bg: "bg-sky-50 border-sky-100", text: "text-sky-900" },
   NURTURE: { bg: "bg-amber-50 border-amber-100", text: "text-amber-900" },
   NOT_QUALIFIED: { bg: "bg-red-50 border-red-100", text: "text-red-900" },
 };
@@ -207,7 +210,7 @@ function CondensedReport({
   floor,
 }: {
   q: Qualification;
-  outcome: "QUALIFIED" | "NURTURE" | "NOT_QUALIFIED";
+  outcome: QualificationOutcome;
   total: number;
   floor: number;
 }) {
@@ -555,6 +558,15 @@ function QualificationForm({
           className="text-xs font-medium px-3 py-1.5 rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 disabled:opacity-60"
         >
           {isPending ? "Saving…" : existing ? "Save changes" : "Run qualification"}
+        </button>
+        <button
+          type="submit"
+          formNoValidate
+          disabled={isPending}
+          title="Saves whatever's filled in so far, without requiring a follow-up date or decline reason yet."
+          className="text-xs font-medium px-3 py-1.5 rounded-lg border border-neutral-300 text-neutral-700 hover:bg-neutral-50 disabled:opacity-60"
+        >
+          {isPending ? "Saving…" : "Save and finish later"}
         </button>
         <button type="button" onClick={onDone} className="text-xs font-medium text-neutral-500 hover:text-neutral-800">
           Cancel

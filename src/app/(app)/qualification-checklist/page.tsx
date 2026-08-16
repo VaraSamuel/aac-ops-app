@@ -22,6 +22,7 @@ import {
 
 const OUTCOME_BADGE: Record<string, string> = {
   QUALIFIED: "bg-emerald-50 text-emerald-700",
+  CONDITIONALLY_QUALIFIED: "bg-sky-50 text-sky-700",
   NURTURE: "bg-amber-50 text-amber-700",
   NOT_QUALIFIED: "bg-red-50 text-red-700",
 };

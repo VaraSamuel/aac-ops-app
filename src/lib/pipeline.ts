@@ -46,7 +46,7 @@ export function sectionScore(scores: ItemScores, section: keyof typeof SIGNAL_RE
   return sumRefs(scores, SIGNAL_REFS[section]);
 }
 
-export type QualificationOutcome = "QUALIFIED" | "NURTURE" | "NOT_QUALIFIED";
+export type QualificationOutcome = "QUALIFIED" | "CONDITIONALLY_QUALIFIED" | "NURTURE" | "NOT_QUALIFIED";
 
 // Total out of 30 — displayed, not itself a decision.
 export function qualificationTotal(scores: ItemScores): number {
@@ -73,23 +73,30 @@ export function verticalDepth(hasOverlay: boolean): "MISSING - universal criteri
 // The decision rule, in order: gates first, then the workflow floor, then
 // the buying-readiness override, then the total. Reordering this changes
 // which leads qualify — do not reorder. A gate left unresolved (null) is
-// not a pass, so it falls through the same as a fail — the honest reading
-// of "hold the lead rather than guessing a pass".
+// not a pass, so it falls through the same as a fail — with one deliberate
+// exception: F4 (service-ladder fit) left unresolved doesn't hard-decline
+// the lead the way B1/C1/D1/E1 unresolved does. A prospect can clear every
+// other gate and the score, and still be waiting on a plain "is this an
+// Assessment or a Sprint" answer — that's Conditionally qualified, not
+// Not qualified. An explicit FAIL on F4 is still a real decline.
 export function qualificationOutcome(
   gates: QualificationGates,
   scores: ItemScores,
   overrideApplied: boolean
 ): QualificationOutcome {
-  const allGatesPassed =
-    gates.gateB1 === "PASS" && gates.gateC1 === "PASS" && gates.gateD1 === "PASS" && gates.gateE1 === "PASS" && gates.gateF4 === "PASS";
-  if (!allGatesPassed) return "NOT_QUALIFIED";
+  const coreGatesPassed =
+    gates.gateB1 === "PASS" && gates.gateC1 === "PASS" && gates.gateD1 === "PASS" && gates.gateE1 === "PASS";
+  if (!coreGatesPassed) return "NOT_QUALIFIED";
+  if (gates.gateF4 === "FAIL") return "NOT_QUALIFIED";
   if (workflowFloor(scores) < 8) return "NURTURE";
   if (overrideApplied) return "NURTURE";
-  return qualificationTotal(scores) >= 19 ? "QUALIFIED" : "NURTURE";
+  if (qualificationTotal(scores) < 19) return "NURTURE";
+  return gates.gateF4 === "PASS" ? "QUALIFIED" : "CONDITIONALLY_QUALIFIED";
 }
 
 export const QUALIFICATION_OUTCOME_LABELS: Record<QualificationOutcome, string> = {
   QUALIFIED: "Qualified",
+  CONDITIONALLY_QUALIFIED: "Conditionally qualified",
   NURTURE: "Nurture",
   NOT_QUALIFIED: "Not qualified",
 };
@@ -97,7 +104,9 @@ export const QUALIFICATION_OUTCOME_LABELS: Record<QualificationOutcome, string> 
 // Written by Automation 3 when Outcome becomes Qualified — the only next
 // step value the spec defines, so there's nothing to store per-row.
 export function qualificationNextStep(outcome: QualificationOutcome): string | null {
-  return outcome === "QUALIFIED" ? "Schedule discovery" : null;
+  if (outcome === "QUALIFIED") return "Schedule discovery";
+  if (outcome === "CONDITIONALLY_QUALIFIED") return "Confirm F4, then schedule discovery";
+  return null;
 }
 
 // ── Discovery Call ──────────────────────────────────────────────────────

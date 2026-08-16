@@ -7,33 +7,65 @@ import { logOut } from "@/lib/actions";
 
 const NAV = [
   { href: "/pipeline", label: "Pipeline" },
-  { href: "/qualification-checklist", label: "Lead Qualification Checklist" },
-  { href: "/clients", label: "Clients" },
+  {
+    href: "/qualification-checklist",
+    label: "Lead Qualification Checklist",
+    children: [
+      { href: "/qualification-checklist", label: "Overview" },
+      { href: "/clients", label: "Clients" },
+    ],
+  },
   { href: "/signal", label: "Signal Engine" },
   { href: "/playbooks", label: "Playbooks" },
   { href: "/questions", label: "Discovery Questions" },
   { href: "/monitor", label: "Monitor" },
 ];
 
+function isActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   return (
     <nav className="flex-1 px-3 py-4 space-y-1">
       {NAV.map((item) => {
-        const active = pathname === item.href || pathname.startsWith(item.href + "/");
+        const active = isActive(pathname, item.href);
         return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onNavigate}
-            className={`block rounded-lg px-3 py-2 text-sm font-medium transition ${
-              active
-                ? "bg-indigo-50 text-indigo-700"
-                : "text-neutral-600 hover:bg-indigo-50 hover:text-indigo-700"
-            }`}
-          >
-            {item.label}
-          </Link>
+          <div key={item.href}>
+            <Link
+              href={item.href}
+              onClick={onNavigate}
+              className={`block rounded-lg px-3 py-2 text-sm font-medium transition ${
+                active
+                  ? "bg-indigo-50 text-indigo-700"
+                  : "text-neutral-600 hover:bg-indigo-50 hover:text-indigo-700"
+              }`}
+            >
+              {item.label}
+            </Link>
+            {"children" in item && item.children && (
+              <div className="ml-3 mt-0.5 space-y-0.5 border-l border-neutral-100 pl-3">
+                {item.children.map((child) => {
+                  const childActive = isActive(pathname, child.href);
+                  return (
+                    <Link
+                      key={child.href}
+                      href={child.href}
+                      onClick={onNavigate}
+                      className={`block rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                        childActive
+                          ? "bg-indigo-50 text-indigo-700"
+                          : "text-neutral-500 hover:bg-indigo-50 hover:text-indigo-700"
+                      }`}
+                    >
+                      {child.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         );
       })}
     </nav>
